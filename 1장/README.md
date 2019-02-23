@@ -217,6 +217,131 @@
     바로 이것이 함수 오버로딩 이라는 객제 지향 개념을 자바스크립트에 녹인 원리다.
     너무나 당연스럽게 자바스크립트 개발자는 사용하고 있다.
   */
+  line.x = function(funcToGetX) {
+    if (!arguments.length) return getX;
+    getX = funcToGetX;
+    return line;
+  }
+  /*
+    자바스크크립트 인자의 자유도가 높은이유
+    arguments는 호출한 함수의 인자를 담은 유사 배열(array-like) 객체로 함수 내부에서 사용된다.
+    if 문은 이 유사 배열 길이를 체크해서 인자가 한도 없으면 길이는 0이고 getX를 그대로 반환
+
+    다시 말해 인자 없이 line.x를 호출하면 x 좌표의 현재 접근자를 내어준다.
+    인자가 있으면 x좌표 접근자를 주언진 인자로 바꾼뒤, line 함수 객체를 돌려준다,
+    인자 i도 위와 같은 방법으로 함수 오버로딩을 할 수 있다.
+
+    Tip: 자바스크립트에서 객체 지향적 함수 오버로딩 개념은 함수의 arguments를 보고 여기에 뭔가 맞추는 행위다.
+    즉 길이를 보고 각각 다른 행동을 취하게 로직을 짤 수 있다.
+
+    line 객체를 반환한 이유는 메서드 체이닝을 써서 좀더 사용자가 쓰기 편하게 하기 위함이다.
+  */
+  lineGenerator = rj3.svg.line()
+    .x()
+    .y()
+  // 위코드가 메서드 체이닝
 ```
+- z 좌표가 하나 더 추가 되었을떄의 처리 방식은 ?
+```javascript
+var objectData = [
+  { x: 10, y: 130, z: 90 },
+  { x: 100, y: 60, z: 202 },
+  { x: 190, y: 160, z: 150 },
+  { x: 200, y: 10, z: 175 }
+],
+```
+- 딱히 다른 코드를 구현하지 않아도 제대로 동작한다.
+- 이미 설계자가 동적으로 코드를 처리하께끔 구현 되어져 있단 뜻이다.
+```javascript
+// 생성자 함수로 만들어도 모양은 딴판이지만, 결과는 같다.
+function XYPair(x, y) {
+  this.x = x;
+  this.y = y;
+}
+
+var objectData = [
+  new XYPair(10, 130),
+  new XYPair(100, 60),
+  new XYPair(190, 160),
+  new XYPair(200, 10)
+],
+```
+- 이런 기법을 덕 타이핑(duck typing)이라 한다.
+- 오리처럼 생겨서 오리처럼 걷고 오리처럼 꽥꽥 소리를 낸다면 그건 오리다.
+- 정의를 어긋나지 않으면 같은걸로 취급한다.
+```javascript
+// 다음과 같이 판별 가능하다.
+if (something instanceof XYPair)
+// C# || 또는 자바 개발자는 이런식으로 딱딱하게 사고 하겠지만
+// 자바스크립트 개발자라면
+if ('x' in something) // something이 x라는 프로퍼티를 소유 또는 상속하는가?
+// 그냥 x 속성을 지니고 있냐 이정도만 생각하면 됨
+// another way
+if (something.hasOwnProperty('x'))  
+// something이 x를 상속이 아닌 자신만의 프로퍼티로 소유하는가?
+```
+- 덕 타이핑은 지저분하게 보이지만, 컴포넌트에 더 다가갈 수 있게 해준는 중요한 수단이다.
+- Tip: 덕 타이핑을 잘 활용하라. 적은 코드로도 객체를 폭 넓게 다룰 수 있다.
+- 다른 개발자는 제어권이 빠져 나갈때 스택에서 튀어나갈 것이라 예상한다.
+- 클로져 라는 자바스크립트 만의 독특한 개념이 존재한다.
+- rj3.svg.line()을 호출하면 내부 line 함수를 반환하는데, 실제로 반환하는것은 클로저이다.
+- 클로저는 꼭 함수 같은 객체지만, 함수의 생성 당시 환경(getX, getY, interpolate 변수)를 내부에 고스란히 간직한다.
+- 내부 line에 있는 함수들을 호출할 때, 이들은 line의 원래 환경을 일부 기억하는 셈이다.
+- 이해하기 어려우면 특정 상황에서 외부 변수들을 잠깐 기억하고 있다.(단기 기억 같은걸로 살짝 이해하자)
+- Tip: 클로저는 자바스크립트의 정말 강력한 설계 요소다. 모든 함수는 클로저다.
+``` javascript
+  // while 루프의 호출부를 다시 살펴 보자
+  while(++i < n) {
+    d = data[i];
+    points.push([+getX.call(this, d, i), +getY.call(this, d, i)]);
+  }
+```
+- getX.call(this, d, i)가 하는 일은 뭘까?
+- getX가 this 객체의 멤버인 양 인자 d, i를 넘겨 호출한다.
+- this는 특별한 변수로서 대충 설명하면 '영어로는 주어 .앞의 객체를 가리킨다.'
+- 자바스크립트에서 this를 잘 매칭하는것이 설계의 포인트이다.
+- 동적으로 처리할때 가장 중요한 요소라고 봐도 무방하다.
+- 자바스크립트에서 'this'는 설계 관점에서 절호의 기회가 될 수 있다. 잘 써먹도록 하자!
+```javascript
+// 외부 객체에서 값을 얻게끔 라인 생성기를 확장
+// 1장/rj3/pathFromFunction.js
+rj3.svg.smaples = {};
+
+rj3.svg.samples.functionBaseLine = function functionBaseLine() {
+  var firstXCoord = 10,
+  xDistanceBetWeenPoints = 50,
+  lineGenerator,
+  svgHeight = 200;
+
+  lineGenerator = rj3.svg.line()
+    .x(function(d, i){ return firstXcoord + i * xDistanceBetweenPoints })
+    .y(function(d){ return svgHeight - this.getValue(d); });
+  
+  return lineGenerator;
+};
+
+(function(){
+  var yearlyPriceGrapher = {
+    lineGenerator: rj3.svg.samples.functionBasedLine(),
+    getValue: function getValue(year) {
+      // 마치 웹 서비스처럼 호출합니다.
+      return 10 * Math.pow(1.8, year-2010);
+    }
+  },
+  years = [2010, 2011, 2012, 2013, 2014, 2015],
+  path = yearlyPriceGrapher.lineGenerator(years);
+
+  document.getElementById('pathFromFunction').setAttribute('d', path);
+}());
+```
+- getValue는 어디 있을까?
+- yearlyPriceGrapher 객체가 인스턴스화할 때 lineGenerator를 연도마다 특정 값을 반환하는 getValue 함수와 함꼐 묶는다.
+- path = yearlyPriceGrapher.lineGenerator(years) 호출에서
+- yearlyPriceGenerator의 '점 앞의 객체'다.
+- 즉 yearlyPriceGrapher가 y 좌푯값 접근자의 this이므로 getValue 함수는 문제 없이 실행된다.
+- 그림 1-4 실행결과 참고(p042)
+- this는 자신이 모습을 드러낸 지점의 함수 또는 그 함수를 감싸는 객체를 가리킨다고 착각하기 쉽다.
+- 절대 아니다. this는 함수를 호출한 객체를 참조한다.
+  - 실행 문맥에 따라 this를 판별해야 한다.
 
 
